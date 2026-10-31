@@ -85,15 +85,20 @@ func _test_a_animations(player: PlayerController) -> void:
 	player.anim_sprite.flip_h = false
 	assert(player.anim_sprite.flip_h == false, "Flipping right must face right")
 
-	# 5. Collision capsule scale check
+	# 5. Collision capsule and camera zoom scale check
 	var capsule = player.collision_shape.shape as CapsuleShape2D
 	assert(capsule != null, "Player collision shape must be CapsuleShape2D")
 	assert(capsule.height <= 24.0, "Capsule height must be proportional to 32x32 character (<= 24px)")
 	assert(capsule.radius <= 8.0, "Capsule radius must be proportional to 32x32 character (<= 8px)")
 
+	var cam: Camera2D = player.get_node_or_null("Camera2D") as Camera2D
+	assert(cam != null, "Player must have Camera2D")
+	assert(cam.zoom.x >= 1.4 and cam.zoom.y >= 1.4, "Camera2D zoom must be scaled (>= 1.4x) for character visibility")
+
 	print("✓ SpriteFrames 32x32 nearest verified for idle, walk, jump, fall, mine")
 	print("✓ Direction flips preserved cleanly")
 	print("✓ Collision shape calibrated to 32x32 proportions")
+	print("✓ Camera2D zoom enhanced for optimal character visibility")
 
 func _test_b_lighting_and_occlusion(main_instance: Node, player: PlayerController, chunk_manager: ChunkManager, hud: Node) -> void:
 	print("\n--- TEST B: ILUMINAÇÃO DINÂMICA E OCLUSÃO DE BLOCOS ---")
@@ -231,6 +236,13 @@ func _test_d_regression(main_instance: Node, player: PlayerController, chunk_man
 	player.global_position.y = 160.0 # 10 meters deep
 	player._physics_process(0.1)
 	assert(player.current_oxygen < 100.0, "Oxygen must deplete underground")
+
+	# Surface recovery
+	player.global_position.y = 0.0 # Surface
+	player.current_oxygen = 100.0
+	player.current_health = 41.0
+	player._physics_process(0.5)
+	assert(player.current_health > 41.0, "Health must recover when safe on surface with full oxygen")
 
 	# 2. Mining and building
 	var test_block := Vector2i(50, 50)

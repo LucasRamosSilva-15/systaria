@@ -27,10 +27,17 @@ signal quick_save_requested
 @export_group("Stats")
 @export var max_health: float = 100.0
 @export var current_health: float = 100.0
+@export var health_recovery_rate: float = 2.0
 @export var max_oxygen: float = 100.0
 @export var current_oxygen: float = 100.0
 @export var oxygen_depletion_rate: float = 1.5
 @export var meters_per_block: float = 1.0
+
+@export_group("Lighting & Vision")
+@export var lantern_energy: float = 1.25
+@export var lantern_scale: float = 1.25
+@export var lantern_color: Color = Color(0.92, 0.96, 1.0, 1.0)
+@export var camera_zoom: Vector2 = Vector2(1.5, 1.5)
 
 var inventory: Inventory
 var selected_hotbar_index: int = 0
@@ -73,6 +80,14 @@ func _ready() -> void:
 		cracks_sprite.top_level = true
 	if anim_sprite:
 		anim_sprite.play("idle")
+	var cam: Camera2D = get_node_or_null("Camera2D") as Camera2D
+	if cam:
+		cam.zoom = camera_zoom
+	var lamp: PointLight2D = get_node_or_null("Headlamp") as PointLight2D
+	if lamp:
+		lamp.energy = lantern_energy
+		lamp.texture_scale = lantern_scale
+		lamp.color = lantern_color
 	_ensure_default_inputs()
 
 func _ensure_default_inputs() -> void:
@@ -378,7 +393,7 @@ func _update_animation() -> void:
 	if is_mining:
 		target_anim = "mine"
 	elif not is_on_floor():
-		if velocity.y < -20.0:
+		if velocity.y < -10.0:
 			target_anim = "jump"
 		else:
 			target_anim = "fall"
@@ -415,6 +430,19 @@ func _process_survival(delta: float) -> void:
 			current_health = max(0.0, current_health - 4.0 * delta)
 	else:
 		current_oxygen = min(max_oxygen, current_oxygen + 25.0 * delta)
+		# Natural health recovery when safe on the surface with full oxygen
+		if current_oxygen >= max_oxygen and current_health < max_health:
+			current_health = min(max_health, current_health + health_recovery_rate * delta)
+
+	# Handle death and respawn if health is completely depleted
+	if current_health <= 0.0:
+		_respawn_player()
+
+func _respawn_player() -> void:
+	current_health = max_health
+	current_oxygen = max_oxygen
+	global_position.y = -10.0
+	velocity = Vector2.ZERO
 
 func _emit_hud_stats() -> void:
 	var current_depth: int = max(0, int(floor(global_position.y / 16.0) * meters_per_block))

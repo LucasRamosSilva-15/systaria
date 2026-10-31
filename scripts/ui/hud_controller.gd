@@ -23,6 +23,22 @@ func _ready() -> void:
 		for child in hotbar_slots.get_children():
 			if child is Panel:
 				_slot_panels.append(child)
+				var count_lbl: Label = child.get_node_or_null("Count")
+				if count_lbl:
+					count_lbl.add_theme_color_override("font_outline_color", Color(0.04, 0.05, 0.07, 0.95))
+					count_lbl.add_theme_constant_override("outline_size", 3)
+	_enhance_labels_contrast()
+
+func _enhance_labels_contrast() -> void:
+	var labels = [
+		health_label, oxygen_label, depth_label, stratum_label, selected_block_label,
+		get_node_or_null("MarginContainer/TopBar/StatsVBox/HealthContainer/HealthTitle"),
+		get_node_or_null("MarginContainer/TopBar/StatsVBox/OxygenContainer/OxygenTitle")
+	]
+	for lbl in labels:
+		if lbl is Label:
+			lbl.add_theme_color_override("font_outline_color", Color(0.04, 0.05, 0.07, 0.95))
+			lbl.add_theme_constant_override("outline_size", 3)
 
 func connect_inventory(inv: Inventory) -> void:
 	if _current_inventory:

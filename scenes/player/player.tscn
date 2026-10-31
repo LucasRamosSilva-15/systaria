@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/player/player_controller.gd" id="1_script"]
 [ext_resource type="SpriteFrames" path="res://resources/player_sprite_frames.tres" id="2_frames"]
@@ -10,6 +10,9 @@
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
 radius = 6.0
 height = 20.0
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_unshaded"]
+light_mode = 1
 
 [node name="Player" type="CharacterBody2D" groups=["player"]]
 collision_layer = 2
@@ -37,27 +40,30 @@ texture = ExtResource("5_pick_tex")
 
 [node name="SelectorReticle" type="Sprite2D" parent="."]
 z_index = 50
+material = SubResource("CanvasItemMaterial_unshaded")
 texture_filter = 1
 texture = ExtResource("3_selector_tex")
 
 [node name="CracksSprite" type="Sprite2D" parent="."]
 visible = false
 z_index = 45
+material = SubResource("CanvasItemMaterial_unshaded")
 texture_filter = 1
 texture = ExtResource("6_cracks_tex")
 region_enabled = true
 region_rect = Rect2(0, 0, 16, 16)
 
 [node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(1.5, 1.5)
 position_smoothing_enabled = true
 position_smoothing_speed = 8.0
 
 [node name="Headlamp" type="PointLight2D" parent="."]
 position = Vector2(0, -7)
-color = Color(0.88, 0.94, 1, 1)
-energy = 1.15
+color = Color(0.92, 0.96, 1, 1)
+energy = 1.25
 shadow_enabled = true
 shadow_filter = 1
-shadow_color = Color(0, 0, 0, 0.85)
+shadow_color = Color(0, 0, 0, 0.65)
 texture = ExtResource("4_light_tex")
-texture_scale = 1.6
+texture_scale = 1.25

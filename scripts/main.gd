@@ -5,6 +5,7 @@ const SaveManager = preload("res://scripts/save/save_manager.gd")
 
 @export var world_id: String = "world_001"
 @export var auto_save_interval: float = 60.0
+@export var ambient_cave_color: Color = Color(0.26, 0.30, 0.38, 1.0)
 
 @onready var world = $World
 @onready var chunk_manager = $World/ChunkManager
@@ -13,11 +14,15 @@ const SaveManager = preload("res://scripts/save/save_manager.gd")
 @onready var inventory_ui = $UI_Layer/InventoryUI
 @onready var crafting_ui = $UI_Layer/CraftingUI
 @onready var chest_ui = $UI_Layer/ChestUI
+@onready var atmosphere_modulate = $AtmosphereModulate
 
 var _auto_save_timer: float = 0.0
 
 func _ready() -> void:
 	print("[Main] Initializing ABYSSUS Stage 3...")
+
+	if atmosphere_modulate:
+		atmosphere_modulate.color = ambient_cave_color
 
 	# 1. Connect world and inventory systems
 	player.chunk_manager = chunk_manager
