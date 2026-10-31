@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BlockData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/block_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = 6
+name = "Terra com Vegetação"
+material_type = 6
+hardness = 1.0
+is_solid = true
+atlas_coords = Vector2i(5, 0)
+drop_item_id = "dirt"
+

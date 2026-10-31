@@ -1,0 +1,325 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/hud_controller.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_dirt.png" id="2_dirt"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_stone.png" id="3_stone"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_deep_stone.png" id="4_deep"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_metallic_ore.png" id="5_ore"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_cyan_crystal.png" id="6_crystal"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_grass.png" id="7_grass"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
+bg_color = Color(0.12, 0.14, 0.18, 0.85)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.42, 0.55, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_script")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="TopBar" type="HBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+
+[node name="StatsVBox" type="VBoxContainer" parent="MarginContainer/TopBar"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="HealthContainer" type="HBoxContainer" parent="MarginContainer/TopBar/StatsVBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="HealthTitle" type="Label" parent="MarginContainer/TopBar/StatsVBox/HealthContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.25, 0.25, 1)
+theme_override_font_sizes/font_size = 11
+text = "HP"
+
+[node name="HealthBar" type="ProgressBar" parent="MarginContainer/TopBar/StatsVBox/HealthContainer"]
+custom_minimum_size = Vector2(100, 10)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+value = 100.0
+show_percentage = false
+
+[node name="HealthLabel" type="Label" parent="MarginContainer/TopBar/StatsVBox/HealthContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 10
+text = "100/100"
+
+[node name="OxygenContainer" type="HBoxContainer" parent="MarginContainer/TopBar/StatsVBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="OxygenTitle" type="Label" parent="MarginContainer/TopBar/StatsVBox/OxygenContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.85, 0.95, 1)
+theme_override_font_sizes/font_size = 11
+text = "O2"
+
+[node name="OxygenBar" type="ProgressBar" parent="MarginContainer/TopBar/StatsVBox/OxygenContainer"]
+custom_minimum_size = Vector2(100, 10)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+value = 100.0
+show_percentage = false
+
+[node name="OxygenLabel" type="Label" parent="MarginContainer/TopBar/StatsVBox/OxygenContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 10
+text = "100%"
+
+[node name="Spacer" type="Control" parent="MarginContainer/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="DepthContainer" type="VBoxContainer" parent="MarginContainer/TopBar"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="DepthLabel" type="Label" parent="MarginContainer/TopBar/DepthContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "0 m"
+horizontal_alignment = 2
+
+[node name="StratumLabel" type="Label" parent="MarginContainer/TopBar/DepthContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.65, 0.85, 1)
+theme_override_font_sizes/font_size = 10
+text = "SUPERFÍCIE"
+horizontal_alignment = 2
+
+[node name="BottomBar" type="MarginContainer" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -60.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/margin_bottom = 8
+
+[node name="HotbarContainer" type="VBoxContainer" parent="BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+mouse_filter = 2
+theme_override_constants/separation = 3
+
+[node name="SelectedBlockLabel" type="Label" parent="BottomBar/HotbarContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 10
+text = "[ Terra ]"
+horizontal_alignment = 1
+
+[node name="SlotsHBox" type="HBoxContainer" parent="BottomBar/HotbarContainer"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Slot1" type="Panel" parent="BottomBar/HotbarContainer/SlotsHBox"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Icon" type="TextureRect" parent="BottomBar/HotbarContainer/SlotsHBox/Slot1"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_dirt")
+
+[node name="Num" type="Label" parent="BottomBar/HotbarContainer/SlotsHBox/Slot1"]
+layout_mode = 1
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 10.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 8
+text = "1"
+
+[node name="Slot2" type="Panel" parent="BottomBar/HotbarContainer/SlotsHBox"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Icon" type="TextureRect" parent="BottomBar/HotbarContainer/SlotsHBox/Slot2"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("3_stone")
+
+[node name="Num" type="Label" parent="BottomBar/HotbarContainer/SlotsHBox/Slot2"]
+layout_mode = 1
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 10.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 8
+text = "2"
+
+[node name="Slot3" type="Panel" parent="BottomBar/HotbarContainer/SlotsHBox"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Icon" type="TextureRect" parent="BottomBar/HotbarContainer/SlotsHBox/Slot3"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("4_deep")
+
+[node name="Num" type="Label" parent="BottomBar/HotbarContainer/SlotsHBox/Slot3"]
+layout_mode = 1
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 10.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 8
+text = "3"
+
+[node name="Slot4" type="Panel" parent="BottomBar/HotbarContainer/SlotsHBox"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Icon" type="TextureRect" parent="BottomBar/HotbarContainer/SlotsHBox/Slot4"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("5_ore")
+
+[node name="Num" type="Label" parent="BottomBar/HotbarContainer/SlotsHBox/Slot4"]
+layout_mode = 1
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 10.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 8
+text = "4"
+
+[node name="Slot5" type="Panel" parent="BottomBar/HotbarContainer/SlotsHBox"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Icon" type="TextureRect" parent="BottomBar/HotbarContainer/SlotsHBox/Slot5"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("6_crystal")
+
+[node name="Num" type="Label" parent="BottomBar/HotbarContainer/SlotsHBox/Slot5"]
+layout_mode = 1
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 10.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 8
+text = "5"
+
+[node name="Slot6" type="Panel" parent="BottomBar/HotbarContainer/SlotsHBox"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="Icon" type="TextureRect" parent="BottomBar/HotbarContainer/SlotsHBox/Slot6"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -8.0
+offset_top = -8.0
+offset_right = 8.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("7_grass")
+
+[node name="Num" type="Label" parent="BottomBar/HotbarContainer/SlotsHBox/Slot6"]
+layout_mode = 1
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 10.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 8
+text = "6"
+

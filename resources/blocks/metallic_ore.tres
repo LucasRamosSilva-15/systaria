@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BlockData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/block_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = 4
+name = "Minério Metálico"
+material_type = 4
+hardness = 3.0
+is_solid = true
+atlas_coords = Vector2i(3, 0)
+drop_item_id = "metallic_ore"
+

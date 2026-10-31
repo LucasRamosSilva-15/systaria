@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BlockData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/block_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = 5
+name = "Cristal Ciano"
+material_type = 5
+hardness = 3.5
+is_solid = true
+atlas_coords = Vector2i(4, 0)
+drop_item_id = "cyan_crystal"
+
