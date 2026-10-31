@@ -225,6 +225,7 @@ func _test_e_animation_and_presentation() -> void:
 
 func _test_f_persistence_regression() -> void:
 	print("\n--- TEST F: PERSISTÊNCIA COMPLETA E REGRESSÃO ---")
+	cm._load_chunk(Vector2i(1, 1))
 	# Place a workbench and a chest with items in chunk (1, 1)
 	var test_wb_pos := Vector2(1 * 32 * 16 + 10, 1 * 32 * 16 + 10)
 	var test_ch_pos := Vector2(1 * 32 * 16 + 26, 1 * 32 * 16 + 10)
@@ -233,6 +234,8 @@ func _test_f_persistence_regression() -> void:
 	ch.inventory.add_item("cyan_crystal", 12)
 
 	# Save game
+	main_node.world_id = "test_etapa_03"
+	cm.world_id = "test_etapa_03"
 	main_node.save_game(false)
 
 	# Verify saved chunk on disk

@@ -85,3 +85,6 @@ func _try_collect(player_node: CharacterBody2D) -> void:
 		queue_free()
 	elif remainder < count:
 		count = remainder
+	else:
+		# Inventory is full: pause collection attempts briefly to prevent thrashing
+		pickup_delay = 0.4

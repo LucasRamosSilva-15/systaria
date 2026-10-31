@@ -45,12 +45,16 @@ var current_mining_damage: float = 0.0
 var is_mining: bool = false
 var mining_anim_time: float = 0.0
 
-@onready var sprite: Sprite2D = $Sprite2D
+@onready var anim_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var selector: Sprite2D = $SelectorReticle
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 @onready var tool_pivot: Node2D = $ToolPivot
 @onready var tool_sprite: Sprite2D = $ToolPivot/ToolSprite
 @onready var cracks_sprite: Sprite2D = $CracksSprite
+
+var sprite: CanvasItem:
+	get:
+		return anim_sprite
 
 static func pixel_to_block(pixel_pos: Vector2) -> Vector2i:
 	return Vector2i(
@@ -67,6 +71,8 @@ func _ready() -> void:
 		selector.top_level = true
 	if cracks_sprite:
 		cracks_sprite.top_level = true
+	if anim_sprite:
+		anim_sprite.play("idle")
 	_ensure_default_inputs()
 
 func _ensure_default_inputs() -> void:
@@ -129,12 +135,13 @@ func _physics_process(delta: float) -> void:
 
 	if direction != 0.0:
 		velocity.x = move_toward(velocity.x, direction * move_speed, accel * delta)
-		if sprite:
-			sprite.flip_h = direction < 0.0
+		if not is_mining and anim_sprite:
+			anim_sprite.flip_h = direction < 0.0
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, frict * delta)
 
 	move_and_slide()
+	_update_animation()
 
 	_process_survival(delta)
 
@@ -355,17 +362,33 @@ func _update_tool_animation(delta: float) -> void:
 		tool_pivot.rotation = base_angle + swing
 
 		# Flip tool head based on mouse direction
-		if mouse_pos.x < global_position.x:
-			tool_pivot.scale.y = -1.0
-			if sprite:
-				sprite.flip_h = true
-		else:
-			tool_pivot.scale.y = 1.0
-			if sprite:
-				sprite.flip_h = false
+		var facing_left: bool = mouse_pos.x < global_position.x
+		tool_pivot.scale.y = -1.0 if facing_left else 1.0
+		if anim_sprite:
+			anim_sprite.flip_h = facing_left
 	else:
 		tool_sprite.visible = false
 		mining_anim_time = 0.0
+
+func _update_animation() -> void:
+	if not anim_sprite:
+		return
+
+	var target_anim: String = "idle"
+	if is_mining:
+		target_anim = "mine"
+	elif not is_on_floor():
+		if velocity.y < -20.0:
+			target_anim = "jump"
+		else:
+			target_anim = "fall"
+	elif abs(velocity.x) > 5.0:
+		target_anim = "walk"
+	else:
+		target_anim = "idle"
+
+	if anim_sprite.animation != target_anim:
+		anim_sprite.play(target_anim)
 
 func _get_nearest_chest() -> Variant:
 	var chests = get_tree().get_nodes_in_group("chests")

@@ -19,6 +19,11 @@ func get_slot(idx: int) -> InventorySlot:
 		return null
 	return slots[idx]
 
+func clear() -> void:
+	for s in slots:
+		s.item_id = ""
+		s.count = 0
+
 ## Adds an item to the inventory. Returns the remaining count that could not fit (0 if all added).
 func add_item(item_id: String, count: int) -> int:
 	if item_id == "" or count <= 0:
