@@ -139,3 +139,4 @@ static func craft(recipe: Variant, inv: Variant, current_station: String = "") -
 	if remainder > 0:
 		push_error("CraftingManager: Unexpected overflow when adding crafted item")
 	return true
+

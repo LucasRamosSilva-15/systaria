@@ -58,3 +58,4 @@ func to_dict() -> Dictionary:
 		"y": global_position.y,
 		"inventory": inventory.serialize()
 	}
+

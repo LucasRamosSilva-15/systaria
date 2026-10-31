@@ -17,3 +17,4 @@ func _init(p_id: String, p_name: String, p_materials: Dictionary, p_result_id: S
 	result_count = p_result_count
 	required_station = p_station
 	description = p_desc
+

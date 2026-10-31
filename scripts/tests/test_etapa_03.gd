@@ -261,3 +261,4 @@ func _test_f_persistence_regression() -> void:
 	assert(found_wb == true, "Workbench restored in reloaded chunk")
 	assert(found_ch == true, "Chest restored in reloaded chunk")
 	print("✓ Chunk entities streaming restoration passed")
+

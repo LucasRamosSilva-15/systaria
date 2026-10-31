@@ -53,3 +53,4 @@ func to_dict() -> Dictionary:
 		"x": global_position.x,
 		"y": global_position.y
 	}
+
