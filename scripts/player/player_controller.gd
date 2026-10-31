@@ -1,7 +1,11 @@
 class_name PlayerController
 extends CharacterBody2D
 
-signal stats_changed(health: float, max_health: float, oxygen: float, max_oxygen: float, depth: int, selected_block: int)
+const Inventory = preload("res://scripts/inventory/inventory.gd")
+
+signal stats_changed(health: float, max_health: float, oxygen: float, max_oxygen: float, depth: int, selected_hotbar_idx: int)
+signal inventory_toggle_requested
+signal quick_save_requested
 
 @export_group("Movement")
 @export var move_speed: float = 160.0
@@ -24,25 +28,35 @@ signal stats_changed(health: float, max_health: float, oxygen: float, max_oxygen
 @export var current_health: float = 100.0
 @export var max_oxygen: float = 100.0
 @export var current_oxygen: float = 100.0
-@export var oxygen_depletion_rate: float = 1.5 # % per second when underground
-@export var meters_per_block: float = 1.0 # 1 block = 1 meter
+@export var oxygen_depletion_rate: float = 1.5
+@export var meters_per_block: float = 1.0
 
-var selected_block_id: int = BlockManager.BlockID.DIRT
-var chunk_manager: ChunkManager
+var inventory: Inventory
+var selected_hotbar_index: int = 0
+var chunk_manager: Node2D
+var is_inventory_open: bool = false
 var _mine_timer: float = 0.0
+
+static func pixel_to_block(pixel_pos: Vector2) -> Vector2i:
+	return Vector2i(
+		int(floor(pixel_pos.x / 16.0)),
+		int(floor(pixel_pos.y / 16.0))
+	)
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var selector: Sprite2D = $SelectorReticle
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
+func _init() -> void:
+	inventory = Inventory.new(40)
+
 func _ready() -> void:
-	# Ensure selector top-level or detached from player rotation
+	add_to_group("player")
 	if selector:
 		selector.top_level = true
 	_ensure_default_inputs()
 
 func _ensure_default_inputs() -> void:
-	# Fallback input registration in case project.godot wasn't reloaded
 	var actions = {
 		"move_left": [KEY_A, KEY_LEFT],
 		"move_right": [KEY_D, KEY_RIGHT],
@@ -53,6 +67,13 @@ func _ensure_default_inputs() -> void:
 		"hotbar_4": [KEY_4],
 		"hotbar_5": [KEY_5],
 		"hotbar_6": [KEY_6],
+		"hotbar_7": [KEY_7],
+		"hotbar_8": [KEY_8],
+		"hotbar_9": [KEY_9],
+		"hotbar_0": [KEY_0],
+		"toggle_inventory": [KEY_E],
+		"quick_save": [KEY_F5],
+		"menu": [KEY_ESCAPE],
 	}
 	for action in actions:
 		if not InputMap.has_action(action):
@@ -79,12 +100,15 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y = min(velocity.y + gravity * delta, max_fall_speed)
 
-	# 2. Jump
-	if Input.is_action_just_pressed("jump") and is_on_floor():
+	# 2. Jump (only when inventory is closed)
+	if not is_inventory_open and Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = jump_velocity
 
 	# 3. Horizontal movement
-	var direction := Input.get_axis("move_left", "move_right")
+	var direction := 0.0
+	if not is_inventory_open:
+		direction = Input.get_axis("move_left", "move_right")
+
 	var accel := acceleration if is_on_floor() else air_acceleration
 	var frict := friction if is_on_floor() else air_friction
 
@@ -112,50 +136,52 @@ func _physics_process(delta: float) -> void:
 	_emit_hud_stats()
 
 func _process(delta: float) -> void:
-	_update_selector()
-	_handle_interaction()
+	if not is_inventory_open:
+		_update_selector()
+		_handle_interaction()
+	else:
+		if selector:
+			selector.visible = false
 
 func _input(event: InputEvent) -> void:
-	# Hotbar selection via numeric keys
-	if event.is_action_pressed("hotbar_1"):
-		selected_block_id = BlockManager.BlockID.DIRT
-	elif event.is_action_pressed("hotbar_2"):
-		selected_block_id = BlockManager.BlockID.STONE
-	elif event.is_action_pressed("hotbar_3"):
-		selected_block_id = BlockManager.BlockID.DEEP_STONE
-	elif event.is_action_pressed("hotbar_4"):
-		selected_block_id = BlockManager.BlockID.METALLIC_ORE
-	elif event.is_action_pressed("hotbar_5"):
-		selected_block_id = BlockManager.BlockID.CYAN_CRYSTAL
-	elif event.is_action_pressed("hotbar_6"):
-		selected_block_id = BlockManager.BlockID.GRASS
+	# Toggle Inventory
+	if event.is_action_pressed("toggle_inventory"):
+		inventory_toggle_requested.emit()
+	elif event.is_action_pressed("menu"):
+		if is_inventory_open:
+			inventory_toggle_requested.emit()
 
-	# Mouse wheel hotbar cycle
-	if event is InputEventMouseButton and event.is_pressed():
-		var blocks = [
-			BlockManager.BlockID.DIRT,
-			BlockManager.BlockID.STONE,
-			BlockManager.BlockID.DEEP_STONE,
-			BlockManager.BlockID.METALLIC_ORE,
-			BlockManager.BlockID.CYAN_CRYSTAL,
-			BlockManager.BlockID.GRASS
+	# Quick Save
+	if event.is_action_pressed("quick_save"):
+		quick_save_requested.emit()
+
+	# Hotbar selection via numeric keys (only if inventory closed)
+	if not is_inventory_open:
+		var hotbar_actions = [
+			"hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5",
+			"hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_0"
 		]
-		var current_idx: int = blocks.find(selected_block_id)
-		if current_idx == -1:
-			current_idx = 0
+		for i in range(hotbar_actions.size()):
+			if event.is_action_pressed(hotbar_actions[i]):
+				selected_hotbar_index = i
+				_emit_hud_stats()
+				break
 
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			current_idx = (current_idx - 1 + blocks.size()) % blocks.size()
-			selected_block_id = blocks[current_idx]
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			current_idx = (current_idx + 1) % blocks.size()
-			selected_block_id = blocks[current_idx]
+		# Mouse wheel hotbar cycle
+		if event is InputEventMouseButton and event.is_pressed():
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				selected_hotbar_index = (selected_hotbar_index - 1 + 10) % 10
+				_emit_hud_stats()
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				selected_hotbar_index = (selected_hotbar_index + 1) % 10
+				_emit_hud_stats()
 
 func _update_selector() -> void:
 	if not selector:
 		return
+	selector.visible = true
 	var mouse_pos := get_global_mouse_position()
-	var block_coords := ChunkManager.global_pixel_to_block(mouse_pos)
+	var block_coords := pixel_to_block(mouse_pos)
 	selector.global_position = Vector2(block_coords.x * 16 + 8, block_coords.y * 16 + 8)
 
 	var dist := global_position.distance_to(mouse_pos)
@@ -165,7 +191,7 @@ func _update_selector() -> void:
 		selector.modulate = Color(1.0, 0.2, 0.2, 0.35)
 
 func _handle_interaction() -> void:
-	if not chunk_manager:
+	if not chunk_manager or is_inventory_open:
 		return
 
 	var mouse_pos := get_global_mouse_position()
@@ -173,38 +199,44 @@ func _handle_interaction() -> void:
 	if dist > reach_distance:
 		return
 
-	var target_block := ChunkManager.global_pixel_to_block(mouse_pos)
+	var target_block := pixel_to_block(mouse_pos)
 
 	# Mine block (LMB)
 	if Input.is_action_pressed("mine") and _mine_timer <= 0.0:
-		var current_id := chunk_manager.get_block(target_block)
+		var current_id: int = int(chunk_manager.get_block(target_block))
 		if current_id != BlockManager.BlockID.AIR:
-			chunk_manager.set_block(target_block, BlockManager.BlockID.AIR)
+			chunk_manager.mine_block(target_block)
 			_mine_timer = mine_cooldown
 
-	# Place block (RMB)
+	# Place block (RMB) - Linked strictly to Inventory!
 	elif Input.is_action_just_pressed("build"):
-		var current_id := chunk_manager.get_block(target_block)
+		var slot := inventory.get_slot(selected_hotbar_index)
+		if not slot or slot.is_empty():
+			return
+
+		var item_data := ItemManager.get_item(slot.item_id)
+		if not item_data or item_data.place_block_id <= 0:
+			return
+
+		var current_id: int = int(chunk_manager.get_block(target_block))
 		if current_id == BlockManager.BlockID.AIR:
 			# Check intersection with player body
 			var player_rect := Rect2(global_position.x - 12, global_position.y - 42, 24, 86)
 			var block_rect := Rect2(target_block.x * 16, target_block.y * 16, 16, 16)
 			if not player_rect.intersects(block_rect):
-				chunk_manager.set_block(target_block, selected_block_id)
+				# Place block in world
+				chunk_manager.set_block(target_block, item_data.place_block_id)
+				# Consume 1 unit from inventory
+				inventory.remove_from_slot(selected_hotbar_index, 1)
 
 func _process_survival(delta: float) -> void:
-	# Depth is considered underground when y > 0
 	if global_position.y > 32.0:
 		current_oxygen = max(0.0, current_oxygen - oxygen_depletion_rate * delta)
 		if current_oxygen <= 0.0:
-			# Suffocation damage
 			current_health = max(0.0, current_health - 4.0 * delta)
 	else:
-		# Surface replenishes oxygen quickly
 		current_oxygen = min(max_oxygen, current_oxygen + 25.0 * delta)
 
 func _emit_hud_stats() -> void:
-	# Depth in meters relative to surface (y = 0)
 	var current_depth: int = max(0, int(floor(global_position.y / 16.0) * meters_per_block))
-	stats_changed.emit(current_health, max_health, current_oxygen, max_oxygen, current_depth, selected_block_id)
-
+	stats_changed.emit(current_health, max_health, current_oxygen, max_oxygen, current_depth, selected_hotbar_index)

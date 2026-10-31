@@ -6,6 +6,7 @@ const BLOCK_SIZE: int = 16
 
 var chunk_coords: Vector2i = Vector2i.ZERO
 var raw_blocks: Array[int] = []
+var modified_blocks: Dictionary = {} # "lx,ly" -> block_id
 var is_modified: bool = false
 
 var tile_map_layer: TileMapLayer
@@ -40,6 +41,7 @@ func set_block_local(lx: int, ly: int, block_id: int) -> void:
 		return
 	var index: int = ly * CHUNK_SIZE + lx
 	raw_blocks[index] = block_id
+	modified_blocks["%d,%d" % [lx, ly]] = block_id
 	is_modified = true
 
 	if tile_map_layer:
@@ -53,3 +55,18 @@ func get_block_local(lx: int, ly: int) -> int:
 	if lx < 0 or lx >= CHUNK_SIZE or ly < 0 or ly >= CHUNK_SIZE:
 		return BlockManager.BlockID.AIR
 	return raw_blocks[ly * CHUNK_SIZE + lx]
+
+func apply_modifications(mods: Dictionary) -> void:
+	for key in mods.keys():
+		var parts = str(key).split(",")
+		if parts.size() == 2:
+			var lx: int = int(parts[0])
+			var ly: int = int(parts[1])
+			var b_id: int = int(mods[key])
+			if lx >= 0 and lx < CHUNK_SIZE and ly >= 0 and ly < CHUNK_SIZE:
+				raw_blocks[ly * CHUNK_SIZE + lx] = b_id
+				modified_blocks[key] = b_id
+	is_modified = true
+
+func get_bounds_rect() -> Rect2:
+	return Rect2(position.x, position.y, CHUNK_SIZE * BLOCK_SIZE, CHUNK_SIZE * BLOCK_SIZE)

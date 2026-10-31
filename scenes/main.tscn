@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://scenes/world/world.tscn" id="2_world"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3_player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="4_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/inventory_ui.tscn" id="5_inv"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_script")
@@ -25,6 +26,10 @@ color = Color(0.06, 0.08, 0.12, 1)
 
 [node name="HUD" parent="." instance=ExtResource("4_hud")]
 
+[node name="UI_Layer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="InventoryUI" parent="UI_Layer" instance=ExtResource("5_inv")]
+
 [node name="AtmosphereModulate" type="CanvasModulate" parent="."]
 color = Color(0.45, 0.48, 0.55, 1)
-
