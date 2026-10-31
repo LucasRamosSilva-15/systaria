@@ -26,6 +26,7 @@ static func init_blocks() -> void:
 	air.material_type = BlockData.MaterialType.AIR
 	air.is_solid = false
 	air.hardness = 0.0
+	air.min_mining_power = 0
 	air.atlas_coords = Vector2i(-1, -1)
 	_blocks[BlockID.AIR] = air
 
@@ -35,7 +36,8 @@ static func init_blocks() -> void:
 	dirt.name = "Terra"
 	dirt.material_type = BlockData.MaterialType.SOIL
 	dirt.is_solid = true
-	dirt.hardness = 1.0
+	dirt.hardness = 0.6
+	dirt.min_mining_power = 1
 	dirt.atlas_coords = Vector2i(0, 0)
 	dirt.drop_item_id = "dirt"
 	_blocks[BlockID.DIRT] = dirt
@@ -46,7 +48,8 @@ static func init_blocks() -> void:
 	stone.name = "Pedra"
 	stone.material_type = BlockData.MaterialType.STONE
 	stone.is_solid = true
-	stone.hardness = 2.0
+	stone.hardness = 1.2
+	stone.min_mining_power = 1
 	stone.atlas_coords = Vector2i(1, 0)
 	stone.drop_item_id = "stone"
 	_blocks[BlockID.STONE] = stone
@@ -57,7 +60,8 @@ static func init_blocks() -> void:
 	deep_stone.name = "Pedra Profunda"
 	deep_stone.material_type = BlockData.MaterialType.DEEP_STONE
 	deep_stone.is_solid = true
-	deep_stone.hardness = 4.0
+	deep_stone.hardness = 2.6
+	deep_stone.min_mining_power = 2
 	deep_stone.atlas_coords = Vector2i(2, 0)
 	deep_stone.drop_item_id = "deep_stone"
 	_blocks[BlockID.DEEP_STONE] = deep_stone
@@ -68,7 +72,8 @@ static func init_blocks() -> void:
 	metallic_ore.name = "Minério Metálico"
 	metallic_ore.material_type = BlockData.MaterialType.ORE
 	metallic_ore.is_solid = true
-	metallic_ore.hardness = 3.0
+	metallic_ore.hardness = 2.0
+	metallic_ore.min_mining_power = 2
 	metallic_ore.atlas_coords = Vector2i(3, 0)
 	metallic_ore.drop_item_id = "metallic_ore"
 	_blocks[BlockID.METALLIC_ORE] = metallic_ore
@@ -79,7 +84,8 @@ static func init_blocks() -> void:
 	crystal.name = "Cristal Ciano"
 	crystal.material_type = BlockData.MaterialType.CRYSTAL
 	crystal.is_solid = true
-	crystal.hardness = 3.5
+	crystal.hardness = 3.2
+	crystal.min_mining_power = 2
 	crystal.atlas_coords = Vector2i(4, 0)
 	crystal.drop_item_id = "cyan_crystal"
 	_blocks[BlockID.CYAN_CRYSTAL] = crystal
@@ -90,7 +96,8 @@ static func init_blocks() -> void:
 	grass.name = "Terra com Vegetação"
 	grass.material_type = BlockData.MaterialType.ORGANIC
 	grass.is_solid = true
-	grass.hardness = 1.0
+	grass.hardness = 0.6
+	grass.min_mining_power = 1
 	grass.atlas_coords = Vector2i(5, 0)
 	grass.drop_item_id = "dirt"
 	_blocks[BlockID.GRASS] = grass

@@ -5,6 +5,8 @@ const Inventory = preload("res://scripts/inventory/inventory.gd")
 
 signal stats_changed(health: float, max_health: float, oxygen: float, max_oxygen: float, depth: int, selected_hotbar_idx: int)
 signal inventory_toggle_requested
+signal crafting_toggle_requested
+signal chest_interact_requested(chest_node)
 signal quick_save_requested
 
 @export_group("Movement")
@@ -21,7 +23,6 @@ signal quick_save_requested
 
 @export_group("Building & Mining")
 @export var reach_distance: float = 110.0
-@export var mine_cooldown: float = 0.15
 
 @export_group("Stats")
 @export var max_health: float = 100.0
@@ -35,17 +36,27 @@ var inventory: Inventory
 var selected_hotbar_index: int = 0
 var chunk_manager: Node2D
 var is_inventory_open: bool = false
-var _mine_timer: float = 0.0
+var is_crafting_open: bool = false
+var is_chest_open: bool = false
+
+var current_crafting_station: String = ""
+var current_mining_target: Vector2i = Vector2i(-999999, -999999)
+var current_mining_damage: float = 0.0
+var is_mining: bool = false
+var mining_anim_time: float = 0.0
+
+@onready var sprite: Sprite2D = $Sprite2D
+@onready var selector: Sprite2D = $SelectorReticle
+@onready var collision_shape: CollisionShape2D = $CollisionShape2D
+@onready var tool_pivot: Node2D = $ToolPivot
+@onready var tool_sprite: Sprite2D = $ToolPivot/ToolSprite
+@onready var cracks_sprite: Sprite2D = $CracksSprite
 
 static func pixel_to_block(pixel_pos: Vector2) -> Vector2i:
 	return Vector2i(
 		int(floor(pixel_pos.x / 16.0)),
 		int(floor(pixel_pos.y / 16.0))
 	)
-
-@onready var sprite: Sprite2D = $Sprite2D
-@onready var selector: Sprite2D = $SelectorReticle
-@onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 func _init() -> void:
 	inventory = Inventory.new(40)
@@ -54,6 +65,8 @@ func _ready() -> void:
 	add_to_group("player")
 	if selector:
 		selector.top_level = true
+	if cracks_sprite:
+		cracks_sprite.top_level = true
 	_ensure_default_inputs()
 
 func _ensure_default_inputs() -> void:
@@ -72,6 +85,8 @@ func _ensure_default_inputs() -> void:
 		"hotbar_9": [KEY_9],
 		"hotbar_0": [KEY_0],
 		"toggle_inventory": [KEY_E],
+		"toggle_crafting": [KEY_C],
+		"interact": [KEY_F],
 		"quick_save": [KEY_F5],
 		"menu": [KEY_ESCAPE],
 	}
@@ -95,18 +110,18 @@ func _ensure_default_inputs() -> void:
 		mb.button_index = MOUSE_BUTTON_RIGHT
 		InputMap.action_add_event("build", mb)
 
+func has_ui_open() -> bool:
+	return is_inventory_open or is_crafting_open or is_chest_open
+
 func _physics_process(delta: float) -> void:
-	# 1. Gravity
 	if not is_on_floor():
 		velocity.y = min(velocity.y + gravity * delta, max_fall_speed)
 
-	# 2. Jump (only when inventory is closed)
-	if not is_inventory_open and Input.is_action_just_pressed("jump") and is_on_floor():
+	if not has_ui_open() and Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = jump_velocity
 
-	# 3. Horizontal movement
 	var direction := 0.0
-	if not is_inventory_open:
+	if not has_ui_open():
 		direction = Input.get_axis("move_left", "move_right")
 
 	var accel := acceleration if is_on_floor() else air_acceleration
@@ -121,42 +136,57 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-	# 4. Survival & Oxygen
 	_process_survival(delta)
 
-	# 5. Mining & Building cooldown
-	if _mine_timer > 0.0:
-		_mine_timer -= delta
-
-	# 6. Stream chunks around player
-	if chunk_manager:
+	if chunk_manager and chunk_manager.has_method("update_chunks_around"):
 		chunk_manager.update_chunks_around(global_position)
 
-	# 7. Update HUD
 	_emit_hud_stats()
 
 func _process(delta: float) -> void:
-	if not is_inventory_open:
+	if not has_ui_open():
 		_update_selector()
-		_handle_interaction()
+		_handle_interaction(delta)
 	else:
 		if selector:
 			selector.visible = false
+		if cracks_sprite:
+			cracks_sprite.visible = false
+		if tool_sprite:
+			tool_sprite.visible = false
+		is_mining = false
+		current_mining_damage = 0.0
+
+	_update_tool_animation(delta)
 
 func _input(event: InputEvent) -> void:
 	# Toggle Inventory
 	if event.is_action_pressed("toggle_inventory"):
 		inventory_toggle_requested.emit()
+	# Toggle Crafting
+	elif event.is_action_pressed("toggle_crafting"):
+		crafting_toggle_requested.emit()
+	# Interact (Chest open)
+	elif event.is_action_pressed("interact"):
+		var nearest = _get_nearest_chest()
+		if nearest:
+			chest_interact_requested.emit(nearest)
+	# Menu / ESC
 	elif event.is_action_pressed("menu"):
-		if is_inventory_open:
-			inventory_toggle_requested.emit()
+		if has_ui_open():
+			if is_chest_open:
+				chest_interact_requested.emit(null) # close chest
+			elif is_crafting_open:
+				crafting_toggle_requested.emit()
+			elif is_inventory_open:
+				inventory_toggle_requested.emit()
 
 	# Quick Save
 	if event.is_action_pressed("quick_save"):
 		quick_save_requested.emit()
 
-	# Hotbar selection via numeric keys (only if inventory closed)
-	if not is_inventory_open:
+	# Hotbar selection via keys
+	if not has_ui_open():
 		var hotbar_actions = [
 			"hotbar_1", "hotbar_2", "hotbar_3", "hotbar_4", "hotbar_5",
 			"hotbar_6", "hotbar_7", "hotbar_8", "hotbar_9", "hotbar_0"
@@ -190,44 +220,170 @@ func _update_selector() -> void:
 	else:
 		selector.modulate = Color(1.0, 0.2, 0.2, 0.35)
 
-func _handle_interaction() -> void:
-	if not chunk_manager or is_inventory_open:
+func _handle_interaction(delta: float) -> void:
+	if not chunk_manager or has_ui_open():
 		return
 
 	var mouse_pos := get_global_mouse_position()
 	var dist := global_position.distance_to(mouse_pos)
 	if dist > reach_distance:
+		if is_mining:
+			_cancel_mining()
 		return
 
 	var target_block := pixel_to_block(mouse_pos)
 
-	# Mine block (LMB)
-	if Input.is_action_pressed("mine") and _mine_timer <= 0.0:
-		var current_id: int = int(chunk_manager.get_block(target_block))
-		if current_id != BlockManager.BlockID.AIR:
-			chunk_manager.mine_block(target_block)
-			_mine_timer = mine_cooldown
+	# 1. MINING (Hold LMB)
+	if Input.is_action_pressed("mine"):
+		_process_mining_block(target_block, mouse_pos, delta)
+	else:
+		if is_mining:
+			_cancel_mining()
 
-	# Place block (RMB) - Linked strictly to Inventory!
-	elif Input.is_action_just_pressed("build"):
-		var slot := inventory.get_slot(selected_hotbar_index)
-		if not slot or slot.is_empty():
-			return
+	# 2. BUILDING & PLACING (RMB Click)
+	if Input.is_action_just_pressed("build"):
+		_process_building(target_block)
 
-		var item_data := ItemManager.get_item(slot.item_id)
-		if not item_data or item_data.place_block_id <= 0:
-			return
+func _process_mining_block(target_block: Vector2i, mouse_pos: Vector2, delta: float) -> void:
+	# Check if clicking on in-world entity first (Workbench or Chest)
+	var clicked_wb = _get_entity_at_position("workbenches", mouse_pos)
+	if clicked_wb:
+		clicked_wb.mine_and_destroy(chunk_manager)
+		_cancel_mining()
+		return
 
+	var clicked_chest = _get_entity_at_position("chests", mouse_pos)
+	if clicked_chest:
+		var hud_node = get_parent().get_node_or_null("HUD") if get_parent() else null
+		clicked_chest.mine_and_destroy(chunk_manager, hud_node)
+		_cancel_mining()
+		return
+
+	# Mine terrain block
+	var current_id: int = int(chunk_manager.get_block(target_block))
+	if current_id == BlockManager.BlockID.AIR:
+		_cancel_mining()
+		return
+
+	if target_block != current_mining_target:
+		current_mining_target = target_block
+		current_mining_damage = 0.0
+
+	var block_data := BlockManager.get_block(current_id)
+
+	# Calculate mining speed and power from equipped hotbar tool
+	var tool_power: int = 1
+	var tool_speed: float = 0.5 # Hand digging speed
+	var slot := inventory.get_slot(selected_hotbar_index)
+	if slot and not slot.is_empty():
+		var it_data := ItemManager.get_item(slot.item_id)
+		if it_data and it_data.tool_type == "pickaxe":
+			tool_power = it_data.mining_power
+			tool_speed = it_data.mining_speed
+
+	# Tool power restriction / penalty
+	if tool_power < block_data.min_mining_power:
+		tool_speed *= 0.15
+
+	var effective_time: float = max(0.08, block_data.hardness / (tool_speed * (1.0 + (tool_power - 1) * 0.35)))
+	current_mining_damage += (1.0 / effective_time) * delta
+	is_mining = true
+
+	# Cracks visual progress
+	if cracks_sprite:
+		cracks_sprite.visible = true
+		cracks_sprite.global_position = Vector2(target_block.x * 16 + 8, target_block.y * 16 + 8)
+		var stage: int = clamp(int(current_mining_damage * 4.0), 0, 3)
+		cracks_sprite.region_rect = Rect2(stage * 16, 0, 16, 16)
+
+	if current_mining_damage >= 1.0:
+		chunk_manager.mine_block(target_block)
+		_cancel_mining()
+
+func _cancel_mining() -> void:
+	is_mining = false
+	current_mining_damage = 0.0
+	current_mining_target = Vector2i(-999999, -999999)
+	if cracks_sprite:
+		cracks_sprite.visible = false
+
+func _process_building(target_block: Vector2i) -> void:
+	var slot := inventory.get_slot(selected_hotbar_index)
+	if not slot or slot.is_empty():
+		return
+
+	var item_data := ItemManager.get_item(slot.item_id)
+	if not item_data:
+		return
+
+	var place_pixel_pos := Vector2(target_block.x * 16 + 8, target_block.y * 16 + 8)
+
+	# Place Workbench
+	if item_data.place_entity_type == "workbench":
+		if chunk_manager and chunk_manager.has_method("spawn_workbench"):
+			chunk_manager.spawn_workbench(place_pixel_pos)
+			inventory.remove_from_slot(selected_hotbar_index, 1)
+		return
+
+	# Place Chest
+	if item_data.place_entity_type == "chest":
+		if chunk_manager and chunk_manager.has_method("spawn_chest"):
+			chunk_manager.spawn_chest(place_pixel_pos)
+			inventory.remove_from_slot(selected_hotbar_index, 1)
+		return
+
+	# Place Solid Block
+	if item_data.place_block_id > 0:
 		var current_id: int = int(chunk_manager.get_block(target_block))
 		if current_id == BlockManager.BlockID.AIR:
-			# Check intersection with player body
 			var player_rect := Rect2(global_position.x - 12, global_position.y - 42, 24, 86)
 			var block_rect := Rect2(target_block.x * 16, target_block.y * 16, 16, 16)
 			if not player_rect.intersects(block_rect):
-				# Place block in world
 				chunk_manager.set_block(target_block, item_data.place_block_id)
-				# Consume 1 unit from inventory
 				inventory.remove_from_slot(selected_hotbar_index, 1)
+
+func _update_tool_animation(delta: float) -> void:
+	if not tool_pivot or not tool_sprite:
+		return
+
+	if is_mining:
+		tool_sprite.visible = true
+		mining_anim_time += delta
+		var mouse_pos := get_global_mouse_position()
+		var base_angle := (mouse_pos - tool_pivot.global_position).angle()
+		var swing := sin(mining_anim_time * 16.0) * 0.75
+		tool_pivot.rotation = base_angle + swing
+
+		# Flip tool head based on mouse direction
+		if mouse_pos.x < global_position.x:
+			tool_pivot.scale.y = -1.0
+			if sprite:
+				sprite.flip_h = true
+		else:
+			tool_pivot.scale.y = 1.0
+			if sprite:
+				sprite.flip_h = false
+	else:
+		tool_sprite.visible = false
+		mining_anim_time = 0.0
+
+func _get_nearest_chest() -> Variant:
+	var chests = get_tree().get_nodes_in_group("chests")
+	var nearest = null
+	var min_dist := 54.0 # Reach limit
+	for ch in chests:
+		var d: float = global_position.distance_to(ch.global_position)
+		if d < min_dist:
+			min_dist = d
+			nearest = ch
+	return nearest
+
+func _get_entity_at_position(group_name: String, click_pos: Vector2) -> Variant:
+	var entities = get_tree().get_nodes_in_group(group_name)
+	for ent in entities:
+		if ent.global_position.distance_to(click_pos) <= 16.0:
+			return ent
+	return null
 
 func _process_survival(delta: float) -> void:
 	if global_position.y > 32.0:

@@ -15,6 +15,7 @@ enum MaterialType {
 @export var name: String = "Vazio"
 @export var material_type: MaterialType = MaterialType.AIR
 @export var hardness: float = 1.0
+@export var min_mining_power: int = 1 # Required tool power
 @export var is_solid: bool = false
 @export var atlas_coords: Vector2i = Vector2i(-1, -1)
 @export var drop_item_id: String = ""

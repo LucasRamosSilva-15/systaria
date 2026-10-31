@@ -15,7 +15,7 @@ func _init(p_total_slots: int = TOTAL_SLOTS) -> void:
 		slots[i] = InventorySlot.new()
 
 func get_slot(idx: int) -> InventorySlot:
-	if idx < 0 or idx >= TOTAL_SLOTS:
+	if idx < 0 or idx >= slots.size():
 		return null
 	return slots[idx]
 
@@ -29,7 +29,7 @@ func add_item(item_id: String, count: int) -> int:
 	var remaining: int = count
 
 	# 1. Fill existing stacks of this item
-	for i in range(TOTAL_SLOTS):
+	for i in range(slots.size()):
 		var slot := slots[i]
 		if not slot.is_empty() and slot.item_id == item_id and slot.count < max_stack:
 			var space: int = max_stack - slot.count
@@ -42,7 +42,7 @@ func add_item(item_id: String, count: int) -> int:
 				return 0
 
 	# 2. Fill empty slots
-	for i in range(TOTAL_SLOTS):
+	for i in range(slots.size()):
 		var slot := slots[i]
 		if slot.is_empty():
 			var to_add: int = mini(remaining, max_stack)
@@ -63,7 +63,7 @@ func remove_item(item_id: String, count: int) -> bool:
 		return false
 
 	var needed: int = count
-	for i in range(TOTAL_SLOTS - 1, -1, -1):
+	for i in range(slots.size() - 1, -1, -1):
 		var slot := slots[i]
 		if slot.item_id == item_id:
 			if slot.count <= needed:

@@ -4,6 +4,8 @@ extends Node2D
 const Chunk = preload("res://scripts/world/chunk.gd")
 const DroppedItem = preload("res://scripts/items/dropped_item.gd")
 const SaveManager = preload("res://scripts/save/save_manager.gd")
+const Workbench = preload("res://scripts/world/workbench.gd")
+const Chest = preload("res://scripts/world/chest.gd")
 
 const CHUNK_SIZE: int = 32
 const BLOCK_SIZE: int = 16
@@ -18,9 +20,15 @@ var generator: WorldGenerator
 var active_chunks: Dictionary = {} # Vector2i -> Chunk
 var modified_chunks_cache: Dictionary = {} # Vector2i -> Dictionary ("lx,ly" -> block_id)
 var dropped_items_cache: Dictionary = {} # Vector2i -> Array[Dictionary]
+var workbenches_cache: Dictionary = {} # Vector2i -> Array[Dictionary]
+var chests_cache: Dictionary = {} # Vector2i -> Array[Dictionary]
 
 var dropped_item_scene: PackedScene
+var workbench_scene: PackedScene
+var chest_scene: PackedScene
+
 var items_container: Node2D
+var entities_container: Node2D
 
 signal block_changed(global_block_pos: Vector2i, new_block_id: int)
 
@@ -28,10 +36,16 @@ func _ready() -> void:
 	if not tileset:
 		tileset = load("res://resources/tileset.tres")
 	dropped_item_scene = load("res://scenes/items/dropped_item.tscn")
+	workbench_scene = load("res://scenes/world/workbench.tscn")
+	chest_scene = load("res://scenes/world/chest.tscn")
 
 	items_container = Node2D.new()
 	items_container.name = "DroppedItems"
 	add_child(items_container)
+
+	entities_container = Node2D.new()
+	entities_container.name = "WorldEntities"
+	add_child(entities_container)
 
 	# Check for world metadata save
 	var meta := SaveManager.load_world_meta(world_id)
@@ -100,11 +114,17 @@ func _load_chunk(coords: Vector2i) -> void:
 	# 2. Check and apply saved modifications
 	var mods: Dictionary = {}
 	var saved_items: Array = []
+	var saved_wbs: Array = []
+	var saved_chests: Array = []
 
 	if modified_chunks_cache.has(coords):
 		mods = modified_chunks_cache[coords]
 		if dropped_items_cache.has(coords):
 			saved_items = dropped_items_cache[coords]
+		if workbenches_cache.has(coords):
+			saved_wbs = workbenches_cache[coords]
+		if chests_cache.has(coords):
+			saved_chests = chests_cache[coords]
 	else:
 		# Query disk
 		var disk_data := SaveManager.load_chunk(world_id, coords)
@@ -114,6 +134,12 @@ func _load_chunk(coords: Vector2i) -> void:
 		if disk_data.has("dropped_items") and (disk_data["dropped_items"] is Array):
 			saved_items = disk_data["dropped_items"]
 			dropped_items_cache[coords] = saved_items
+		if disk_data.has("workbenches") and (disk_data["workbenches"] is Array):
+			saved_wbs = disk_data["workbenches"]
+			workbenches_cache[coords] = saved_wbs
+		if disk_data.has("chests") and (disk_data["chests"] is Array):
+			saved_chests = disk_data["chests"]
+			chests_cache[coords] = saved_chests
 
 	if not mods.is_empty():
 		chunk.apply_modifications(mods)
@@ -131,6 +157,21 @@ func _load_chunk(coords: Vector2i) -> void:
 			var uid: String = str(item_dict.get("id", ""))
 			spawn_dropped_item(item_id, count, pos, uid)
 
+	# 4. Restore workbenches
+	for wb_dict in saved_wbs:
+		if wb_dict is Dictionary:
+			var pos := Vector2(float(wb_dict.get("x", 0.0)), float(wb_dict.get("y", 0.0)))
+			var uid: String = str(wb_dict.get("id", ""))
+			spawn_workbench(pos, uid)
+
+	# 5. Restore chests
+	for ch_dict in saved_chests:
+		if ch_dict is Dictionary:
+			var pos := Vector2(float(ch_dict.get("x", 0.0)), float(ch_dict.get("y", 0.0)))
+			var uid: String = str(ch_dict.get("id", ""))
+			var inv_data: Array = ch_dict.get("inventory", [])
+			spawn_chest(pos, uid, inv_data)
+
 func _unload_chunk(coords: Vector2i) -> void:
 	if not active_chunks.has(coords):
 		return
@@ -138,7 +179,7 @@ func _unload_chunk(coords: Vector2i) -> void:
 	var chunk: Chunk = active_chunks[coords]
 	var bounds: Rect2 = chunk.get_bounds_rect()
 
-	# Collect and remove dropped items currently inside this chunk
+	# 1. Collect and remove dropped items
 	var chunk_items: Array = []
 	if items_container:
 		for child in items_container.get_children():
@@ -153,11 +194,28 @@ func _unload_chunk(coords: Vector2i) -> void:
 					})
 					child.queue_free()
 
-	dropped_items_cache[coords] = chunk_items
+	# 2. Collect and remove workbenches
+	var chunk_wbs: Array = []
+	var chunk_chests: Array = []
+	if entities_container:
+		for child in entities_container.get_children():
+			if child is Workbench and not child.is_destroyed:
+				if bounds.has_point(child.global_position):
+					chunk_wbs.append(child.to_dict())
+					child.queue_free()
+			elif child is Chest and not child.is_destroyed:
+				if bounds.has_point(child.global_position):
+					chunk_chests.append(child.to_dict())
+					child.queue_free()
 
-	if chunk.is_modified or not chunk_items.is_empty():
+	dropped_items_cache[coords] = chunk_items
+	workbenches_cache[coords] = chunk_wbs
+	chests_cache[coords] = chunk_chests
+
+	var has_content: bool = chunk.is_modified or not chunk_items.is_empty() or not chunk_wbs.is_empty() or not chunk_chests.is_empty()
+	if has_content:
 		modified_chunks_cache[coords] = chunk.modified_blocks.duplicate()
-		SaveManager.save_chunk(world_id, coords, chunk.modified_blocks, chunk_items)
+		SaveManager.save_chunk_full(world_id, coords, chunk.modified_blocks, chunk_items, chunk_wbs, chunk_chests)
 
 	active_chunks.erase(coords)
 	chunk.queue_free()
@@ -190,7 +248,6 @@ func set_block(global_block_pos: Vector2i, block_id: int) -> bool:
 	block_changed.emit(global_block_pos, block_id)
 	return true
 
-## Mines a block, removes it from terrain, and spawns the corresponding dropped item resource
 func mine_block(global_block_pos: Vector2i) -> bool:
 	var current_id := get_block(global_block_pos)
 	if current_id == BlockManager.BlockID.AIR:
@@ -211,7 +268,6 @@ func spawn_dropped_item(item_id: String, count: int, spawn_pos: Vector2, uid: St
 	var item_node = dropped_item_scene.instantiate()
 	item_node.setup(item_id, count, uid)
 	item_node.global_position = spawn_pos
-	# Initial small pop velocity
 	item_node.velocity = Vector2(randf_range(-35.0, 35.0), randf_range(-110.0, -60.0))
 
 	if items_container:
@@ -220,11 +276,36 @@ func spawn_dropped_item(item_id: String, count: int, spawn_pos: Vector2, uid: St
 		add_child(item_node)
 	return item_node
 
+func spawn_workbench(pos: Vector2, uid: String = "") -> Node2D:
+	if not workbench_scene:
+		workbench_scene = load("res://scenes/world/workbench.tscn")
+	var wb: Workbench = workbench_scene.instantiate()
+	wb.setup(uid)
+	wb.global_position = pos
+	if entities_container:
+		entities_container.add_child(wb)
+	else:
+		add_child(wb)
+	return wb
+
+func spawn_chest(pos: Vector2, uid: String = "", inv_data: Array = []) -> Node2D:
+	if not chest_scene:
+		chest_scene = load("res://scenes/world/chest.tscn")
+	var ch: Chest = chest_scene.instantiate()
+	ch.setup(uid, inv_data)
+	ch.global_position = pos
+	if entities_container:
+		entities_container.add_child(ch)
+	else:
+		add_child(ch)
+	return ch
+
 func save_all_active_chunks() -> void:
 	for coords in active_chunks.keys():
 		var chunk: Chunk = active_chunks[coords]
 		var bounds: Rect2 = chunk.get_bounds_rect()
 
+		# Collect items
 		var chunk_items: Array = []
 		if items_container:
 			for child in items_container.get_children():
@@ -238,7 +319,21 @@ func save_all_active_chunks() -> void:
 							"y": child.global_position.y
 						})
 
-		if chunk.is_modified or not chunk_items.is_empty():
+		# Collect workbenches & chests
+		var chunk_wbs: Array = []
+		var chunk_chests: Array = []
+		if entities_container:
+			for child in entities_container.get_children():
+				if child is Workbench and not child.is_destroyed:
+					if bounds.has_point(child.global_position):
+						chunk_wbs.append(child.to_dict())
+				elif child is Chest and not child.is_destroyed:
+					if bounds.has_point(child.global_position):
+						chunk_chests.append(child.to_dict())
+
+		if chunk.is_modified or not chunk_items.is_empty() or not chunk_wbs.is_empty() or not chunk_chests.is_empty():
 			modified_chunks_cache[coords] = chunk.modified_blocks.duplicate()
 			dropped_items_cache[coords] = chunk_items
-			SaveManager.save_chunk(world_id, coords, chunk.modified_blocks, chunk_items)
+			workbenches_cache[coords] = chunk_wbs
+			chests_cache[coords] = chunk_chests
+			SaveManager.save_chunk_full(world_id, coords, chunk.modified_blocks, chunk_items, chunk_wbs, chunk_chests)

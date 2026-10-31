@@ -1,7 +1,7 @@
 class_name SaveManager
 extends RefCounted
 
-const SAVE_VERSION: int = 1
+const SAVE_VERSION: int = 2
 const BASE_SAVES_DIR: String = "user://saves"
 
 static func get_world_dir(world_id: String = "world_001") -> String:
@@ -77,7 +77,7 @@ static func load_world_meta(world_id: String) -> Dictionary:
 		return data
 	return {}
 
-static func save_player(world_id: String, player: PlayerController) -> bool:
+static func save_player(world_id: String, player: Variant) -> bool:
 	if not player:
 		return false
 	ensure_dirs(world_id)
@@ -93,7 +93,7 @@ static func save_player(world_id: String, player: PlayerController) -> bool:
 	}
 	return safe_write_json(get_world_dir(world_id).path_join("player.json"), p_data)
 
-static func load_player(world_id: String, player: PlayerController) -> bool:
+static func load_player(world_id: String, player: Variant) -> bool:
 	if not player:
 		return false
 	var path := get_world_dir(world_id).path_join("player.json")
@@ -117,9 +117,12 @@ static func get_chunk_file_path(world_id: String, coords: Vector2i) -> String:
 	return get_chunks_dir(world_id).path_join("chunk_%d_%d.json" % [coords.x, coords.y])
 
 static func save_chunk(world_id: String, coords: Vector2i, modified_blocks: Dictionary, dropped_items: Array = []) -> bool:
-	# Only create file if there are actual modifications or dropped items
+	return save_chunk_full(world_id, coords, modified_blocks, dropped_items, [], [])
+
+static func save_chunk_full(world_id: String, coords: Vector2i, modified_blocks: Dictionary, dropped_items: Array = [], workbenches: Array = [], chests: Array = []) -> bool:
 	var path := get_chunk_file_path(world_id, coords)
-	if modified_blocks.is_empty() and dropped_items.is_empty():
+	var has_content: bool = not modified_blocks.is_empty() or not dropped_items.is_empty() or not workbenches.is_empty() or not chests.is_empty()
+	if not has_content:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(path)
 		return true
@@ -129,7 +132,9 @@ static func save_chunk(world_id: String, coords: Vector2i, modified_blocks: Dict
 		"version": SAVE_VERSION,
 		"coords": [coords.x, coords.y],
 		"modified_blocks": modified_blocks,
-		"dropped_items": dropped_items
+		"dropped_items": dropped_items,
+		"workbenches": workbenches,
+		"chests": chests
 	}
 	return safe_write_json(path, chunk_data)
 
@@ -142,4 +147,3 @@ static func load_chunk(world_id: String, coords: Vector2i) -> Dictionary:
 
 static func has_save(world_id: String = "world_001") -> bool:
 	return FileAccess.file_exists(get_world_dir(world_id).path_join("world.json"))
-
