@@ -68,6 +68,8 @@ func _test_a_animations(player: PlayerController) -> void:
 	player.is_mining = false
 
 	# 2. Airborne Jump state
+	player.global_position.y -= 30.0
+	player.move_and_slide()
 	player.velocity = Vector2(0.0, -150.0)
 	player._update_animation()
 	assert(player.anim_sprite.animation == "jump", "Moving upward in air must trigger 'jump'")
@@ -107,6 +109,7 @@ func _test_b_lighting_and_occlusion(main_instance: Node, player: PlayerControlle
 	var headlamp: PointLight2D = player.get_node_or_null("Headlamp") as PointLight2D
 	assert(headlamp != null, "Player must have a Headlamp PointLight2D")
 	assert(headlamp.shadow_enabled == true, "Headlamp must have shadows enabled")
+	assert(headlamp.range_layer_min <= -10, "Headlamp must illuminate background on CanvasLayer -10")
 	assert(headlamp.energy >= 0.8, "Headlamp energy must be adequate")
 	assert(headlamp.color.b >= headlamp.color.r, "Headlamp color must be slightly bluish/cool white")
 	assert(headlamp.shadow_filter == PointLight2D.SHADOW_FILTER_PCF5, "Shadow filter must be smooth PCF5")
@@ -125,6 +128,7 @@ func _test_b_lighting_and_occlusion(main_instance: Node, player: PlayerControlle
 		var occ: OccluderPolygon2D = td.get_occluder(0)
 		assert(occ != null, "Solid tile %d must have OccluderPolygon2D" % tile_x)
 		assert(occ.polygon.size() >= 4, "Occluder polygon must have at least 4 vertices")
+		assert(occ.cull_mode == OccluderPolygon2D.CULL_COUNTER_CLOCKWISE, "Tile %d occluder must use CULL_COUNTER_CLOCKWISE" % tile_x)
 
 	# 3. Dynamic block removal and placement updating occlusion
 	var test_block_pos := Vector2i(100, 100)

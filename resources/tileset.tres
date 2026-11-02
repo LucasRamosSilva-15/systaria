@@ -3,21 +3,27 @@
 [ext_resource type="Texture2D" path="res://assets/terrain/blocks.png" id="1_tex"]
 
 [sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_qp2yk"]
+cull_mode = 2
 polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_81yw3"]
+cull_mode = 2
 polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_vgpmu"]
+cull_mode = 2
 polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_e5o2m"]
+cull_mode = 2
 polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_luhvj"]
+cull_mode = 2
 polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_6dy5u"]
+cull_mode = 2
 polygon = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_1"]

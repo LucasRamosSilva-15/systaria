@@ -88,6 +88,8 @@ func _ready() -> void:
 		lamp.energy = lantern_energy
 		lamp.texture_scale = lantern_scale
 		lamp.color = lantern_color
+		lamp.range_layer_min = -10
+		lamp.range_layer_max = 0
 	_ensure_default_inputs()
 
 func _ensure_default_inputs() -> void:
