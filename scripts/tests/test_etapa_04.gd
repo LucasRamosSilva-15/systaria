@@ -161,7 +161,17 @@ func _test_b_lighting_and_occlusion(main_instance: Node, player: PlayerControlle
 	# 5. AtmosphereModulate & UI separation
 	var modulate: CanvasModulate = main_instance.get_node_or_null("AtmosphereModulate") as CanvasModulate
 	assert(modulate != null, "AtmosphereModulate must exist")
+	
+	# Test underground dark cave atmosphere
+	player.global_position.y = 400.0
+	main_instance._update_atmosphere_lighting(1.0, true)
 	assert(modulate.color.r < 0.35 and modulate.color.g < 0.35, "Modulate must create dark ambient cave atmosphere")
+	
+	# Test surface brighter ambient lighting
+	player.global_position.y = -50.0
+	main_instance._update_atmosphere_lighting(1.0, true)
+	assert(modulate.color.r > 0.5 and modulate.color.g > 0.5, "Surface ambient must be naturally brighter than underground")
+
 	assert(hud is CanvasLayer, "HUD must be a CanvasLayer independent of layer 0 CanvasModulate")
 	var ui_layer = main_instance.get_node_or_null("UI_Layer") as CanvasLayer
 	assert(ui_layer != null and ui_layer.layer > 0, "UI_Layer must be a higher CanvasLayer to stay fully legible")

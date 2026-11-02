@@ -5,7 +5,10 @@ const SaveManager = preload("res://scripts/save/save_manager.gd")
 
 @export var world_id: String = "world_001"
 @export var auto_save_interval: float = 60.0
-@export var ambient_cave_color: Color = Color(0.26, 0.30, 0.38, 1.0)
+@export var ambient_cave_color: Color = Color(0.20, 0.23, 0.30, 1.0)
+@export var ambient_surface_color: Color = Color(0.68, 0.72, 0.78, 1.0)
+@export var surface_threshold_y: float = 0.0
+@export var transition_depth_pixels: float = 240.0 # ~15 blocks transition
 
 @onready var world = $World
 @onready var chunk_manager = $World/ChunkManager
@@ -51,6 +54,8 @@ func _ready() -> void:
 	# 3. Load or create player/world
 	_setup_session()
 
+	_update_atmosphere_lighting(1.0, true)
+
 	print("[Main] Ready. Active chunks: %d | Player pos: %s" % [chunk_manager.active_chunks.size(), player.global_position])
 
 func _process(delta: float) -> void:
@@ -59,9 +64,36 @@ func _process(delta: float) -> void:
 		_auto_save_timer = 0.0
 		save_game(true)
 
+	# Smoothly adjust ambient lighting and background based on depth
+	_update_atmosphere_lighting(delta)
+
 	# Keep crafting station updated on crafting UI
 	if crafting_ui and crafting_ui.visible:
 		crafting_ui.set_crafting_station(player.current_crafting_station)
+
+func _update_atmosphere_lighting(delta: float, instant: bool = false) -> void:
+	if not player:
+		return
+	var player_y: float = player.global_position.y
+	var depth_factor: float = clampf((player_y - surface_threshold_y) / transition_depth_pixels, 0.0, 1.0)
+
+	var target_ambient: Color = ambient_surface_color.lerp(ambient_cave_color, depth_factor)
+	if atmosphere_modulate:
+		if instant:
+			atmosphere_modulate.color = target_ambient
+		else:
+			atmosphere_modulate.color = atmosphere_modulate.color.lerp(target_ambient, 4.0 * delta)
+
+	var sky_rect: ColorRect = get_node_or_null("BackgroundSky/SkyColor") as ColorRect
+	if sky_rect:
+		var target_sky: Color = Color(0.24, 0.32, 0.42, 1.0).lerp(Color(0.08, 0.10, 0.14, 1.0), depth_factor)
+		if instant:
+			sky_rect.color = target_sky
+		else:
+			sky_rect.color = sky_rect.color.lerp(target_sky, 4.0 * delta)
+
+	if player.has_method("update_lantern_depth"):
+		player.update_lantern_depth(depth_factor)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:

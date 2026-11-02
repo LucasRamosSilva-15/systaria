@@ -34,8 +34,8 @@ signal quick_save_requested
 @export var meters_per_block: float = 1.0
 
 @export_group("Lighting & Vision")
-@export var lantern_energy: float = 1.25
-@export var lantern_scale: float = 1.25
+@export var lantern_energy: float = 1.15
+@export var lantern_scale: float = 1.35
 @export var lantern_color: Color = Color(0.92, 0.96, 1.0, 1.0)
 @export var camera_zoom: Vector2 = Vector2(1.5, 1.5)
 
@@ -88,8 +88,13 @@ func _ready() -> void:
 		lamp.energy = lantern_energy
 		lamp.texture_scale = lantern_scale
 		lamp.color = lantern_color
+		lamp.shadow_enabled = true
+		lamp.shadow_filter = PointLight2D.SHADOW_FILTER_PCF5
+		lamp.shadow_filter_smooth = 3.0
+		lamp.shadow_color = Color(0.0, 0.0, 0.0, 0.48)
 		lamp.range_layer_min = -10
 		lamp.range_layer_max = 0
+		lamp.position = Vector2(3.0, -4.0)
 	_ensure_default_inputs()
 
 func _ensure_default_inputs() -> void:
@@ -406,6 +411,20 @@ func _update_animation() -> void:
 
 	if anim_sprite.animation != target_anim:
 		anim_sprite.play(target_anim)
+
+	_update_lamp_position()
+
+func _update_lamp_position() -> void:
+	var lamp: PointLight2D = get_node_or_null("Headlamp") as PointLight2D
+	if lamp and anim_sprite:
+		var bias_x: float = -3.0 if anim_sprite.flip_h else 3.0
+		lamp.position = Vector2(bias_x, -4.0)
+
+func update_lantern_depth(depth_factor: float) -> void:
+	var lamp: PointLight2D = get_node_or_null("Headlamp") as PointLight2D
+	if lamp:
+		# Smoothly scale from 0.85 on surface to lantern_energy (1.15) in cave
+		lamp.energy = lerpf(0.85, lantern_energy, depth_factor)
 
 func _get_nearest_chest() -> Variant:
 	var chests = get_tree().get_nodes_in_group("chests")

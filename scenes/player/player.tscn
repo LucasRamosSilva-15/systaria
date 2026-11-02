@@ -59,13 +59,14 @@ position_smoothing_enabled = true
 position_smoothing_speed = 8.0
 
 [node name="Headlamp" type="PointLight2D" parent="."]
-position = Vector2(0, -7)
+position = Vector2(0, -4)
 color = Color(0.92, 0.96, 1, 1)
-energy = 1.25
+energy = 1.15
 range_layer_min = -10
 range_layer_max = 0
 shadow_enabled = true
 shadow_filter = 1
-shadow_color = Color(0, 0, 0, 0.65)
+shadow_filter_smooth = 3.0
+shadow_color = Color(0, 0, 0, 0.48)
 texture = ExtResource("4_light_tex")
-texture_scale = 1.25
+texture_scale = 1.35
